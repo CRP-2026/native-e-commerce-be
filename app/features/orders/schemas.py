@@ -1,17 +1,21 @@
-from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-class OrderBase(BaseModel):
-    user_id: int
-    status: str = "pending"
-    total_amount: Decimal = Decimal("0.00")
+class OrderLineIn(BaseModel):
+    product_id: str = Field(alias="productId")
+    variant_id: str | None = Field(default=None, alias="variantId")
+    quantity: int = Field(ge=1)
+
+    model_config = {"populate_by_name": True}
 
 
-class OrderRead(OrderBase):
-    id: int
-    created_at: datetime
+class OrderCreateIn(BaseModel):
+    items: list[OrderLineIn] = Field(min_length=1)
+    shipping_address_id: str = Field(alias="shippingAddressId")
+    payment_method_code: str = Field(alias="paymentMethod")
+    shipping_fee: Decimal = Field(default=Decimal("0"), alias="shippingFee")
+    discount_total: Decimal = Field(default=Decimal("0"), alias="discountTotal")
 
-    model_config = {"from_attributes": True}
+    model_config = {"populate_by_name": True}

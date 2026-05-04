@@ -1,26 +1,46 @@
-from fastapi import APIRouter
+from typing import Annotated
 
-from app.features.orders.schemas import OrderBase
-from app.features.orders.service import create_order, get_order, list_orders
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.deps import get_current_user, get_store_id
+from app.core.exceptions import AppError
+from app.db.models import User as UserRow
+from app.features.orders import service as orders_svc
+from app.features.orders.schemas import OrderCreateIn
 
 router = APIRouter()
 
 
-@router.get("/ping")
-def ping() -> dict[str, str]:
-    return {"module": "orders", "status": "ready"}
-
-
 @router.get("/")
-def read_orders() -> list[dict]:
-    return list_orders()
+def list_orders(
+    db: Session = Depends(get_db),
+    store_id: Annotated[int, Depends(get_store_id)] = 1,
+    current: UserRow = Depends(get_current_user),
+    status: str | None = Query(default=None),
+) -> list[dict]:
+    return orders_svc.list_order_summaries(db, store_id, current.id, status=status)
 
 
 @router.get("/{order_id}")
-def read_order(order_id: int) -> dict | None:
-    return get_order(order_id)
+def order_detail(
+    order_id: str,
+    db: Session = Depends(get_db),
+    store_id: Annotated[int, Depends(get_store_id)] = 1,
+    current: UserRow = Depends(get_current_user),
+) -> dict:
+    row = orders_svc.get_order_detail(db, store_id, current.id, order_id)
+    if row is None:
+        raise AppError("not_found", "Order not found", status_code=404)
+    return row
 
 
 @router.post("/")
-def add_order(payload: OrderBase) -> dict:
-    return create_order(payload)
+def place_order(
+    payload: OrderCreateIn,
+    db: Session = Depends(get_db),
+    store_id: Annotated[int, Depends(get_store_id)] = 1,
+    current: UserRow = Depends(get_current_user),
+) -> dict:
+    return orders_svc.create_order(db, store_id, current.id, payload)
