@@ -1,19 +1,10 @@
-from datetime import datetime
-
 from pydantic import BaseModel, EmailStr
 
 
-class UserBase(BaseModel):
+class UserOut(BaseModel):
+    id: str
+    name: str
     email: EmailStr
-    full_name: str | None = None
-
-
-class UserCreate(UserBase):
-    password: str
-
-
-class UserRead(UserBase):
-    id: int
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
+    phone: str | None = None
+    avatar: str | None = None
+    bio: str | None = None

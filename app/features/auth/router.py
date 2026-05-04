@@ -1,17 +1,33 @@
-from fastapi import APIRouter
+from typing import Annotated
 
-from app.features.auth.schemas import LoginRequest, Token
-from app.features.auth.service import build_access_token
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.deps import get_store_id
+from app.features.auth import service as auth_svc
+from app.features.auth.schemas import LoginRequest, SignupRequest, Token
 
 router = APIRouter()
 
 
-@router.get("/ping")
-def ping() -> dict[str, str]:
-    return {"module": "auth", "status": "ready"}
-
-
 @router.post("/login", response_model=Token)
-def login(payload: LoginRequest) -> Token:
-    _ = payload
-    return Token(access_token=build_access_token("demo-user"))
+def login(
+    payload: LoginRequest,
+    db: Session = Depends(get_db),
+    store_id: Annotated[int, Depends(get_store_id)] = 1,
+) -> Token:
+    user = auth_svc.login_user(db, store_id, payload.email, payload.password)
+    token = auth_svc.issue_token(user.id, store_id)
+    return Token(access_token=token)
+
+
+@router.post("/register", response_model=Token)
+def register(
+    payload: SignupRequest,
+    db: Session = Depends(get_db),
+    store_id: Annotated[int, Depends(get_store_id)] = 1,
+) -> Token:
+    user = auth_svc.register_user(db, store_id, payload.email, payload.password, payload.name)
+    token = auth_svc.issue_token(user.id, store_id)
+    return Token(access_token=token)
