@@ -1,15 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.router import api_router
-from app.core.database import Base, engine
+from app.core.handlers import register_exception_handlers
 
-# Lệnh này sẽ tự động tạo bảng trong DB nếu chưa có 
-# (Lưu ý: Đi làm thực tế sẽ dùng Alembic, nhưng giờ test MVP thì cứ dùng cái này cho nhanh)
-Base.metadata.create_all(bind=engine)
+# Load models so relationships/metadata are registered when using tooling (optional)
+from app.db import models as _models  # noqa: F401
 
-# Khởi tạo App
-app = FastAPI(title="Style UP Store API", version="1.0.0")
+app = FastAPI(title="native-ecommerce-be", version="1.0.0")
 
+register_exception_handlers(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,9 +19,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Gắn toàn bộ router của dự án vào tiền tố /api/v1
 app.include_router(api_router, prefix="/api/v1")
 
-@app.get("/", tags=["System"])
+
+@app.get("/", tags=["system"])
 def read_root():
-    return {"message": "Success! Chúc mừng dự án Native E-Commerce bắt đầu!"}
+    return {"message": "Native E‑Commerce API", "docs": "/docs"}
