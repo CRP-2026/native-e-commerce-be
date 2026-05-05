@@ -81,6 +81,7 @@ order_timeline_status_code_pg = ENUM(
     name="order_timeline_status_code",
     create_type=False,
 )
+user_role_pg = ENUM("user", "staff", "admin", name="user_role", create_type=False)
 
 
 class Store(Base):
@@ -104,11 +105,20 @@ class User(Base):
     phone = Column(Text)
     avatar = Column(Text)
     bio = Column(Text)
+    is_active = Column(Boolean, nullable=False, server_default="true")
+    role = Column(user_role_pg, nullable=False, server_default="user")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True))
 
     __table_args__ = (UniqueConstraint("store_id", "email", name="uq_users_store_email"),)
+
+
+class RevokedAccessToken(Base):
+    __tablename__ = "revoked_access_tokens"
+
+    jti = Column(Text, primary_key=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
 
 
 class Address(Base):

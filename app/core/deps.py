@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.exceptions import AppError
 from app.core.security import decode_access_token
 from app.db.models import User
+from app.features.auth import service as auth_svc
 
 
 def get_store_id(x_store_id: Annotated[str | None, Header(alias="X-Store-Id")] = None) -> int:
@@ -38,6 +39,7 @@ def get_current_user(
     store_id: int = Depends(get_store_id),
     payload: dict = Depends(get_token_payload),
 ) -> User:
+    auth_svc.ensure_access_token_not_revoked(db, payload)
     sid = payload.get("sid")
     if sid is not None and int(sid) != store_id:
         raise AppError("forbidden", "Token store does not match X-Store-Id", status_code=403)
@@ -53,4 +55,16 @@ def get_current_user(
     ).scalar_one_or_none()
     if row is None:
         raise AppError("unauthorized", "User not found", status_code=401)
+    if not row.is_active:
+        raise AppError(
+            "account_inactive",
+            "Tài khoản đã bị dừng hoạt động.",
+            status_code=403,
+        )
     return row
+
+
+def get_admin_user(current: User = Depends(get_current_user)) -> User:
+    if str(current.role) != "admin":
+        raise AppError("forbidden", "Chỉ tài khoản admin mới thực hiện được thao tác này.", status_code=403)
+    return current
